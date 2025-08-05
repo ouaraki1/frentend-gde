@@ -9,8 +9,13 @@ import {
   Alert,
   CircularProgress,
   Container,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
 } from '@mui/material';
-import { PersonAddOutlined } from '@mui/icons-material';
+import { PersonAddOutlined, AdminPanelSettings, Person } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
 const Register = () => {
@@ -19,6 +24,8 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'user',
+    adminCode: '',
   });
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
@@ -45,6 +52,13 @@ const Register = () => {
       setValidationError('Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
+    
+    // Vérifier le code admin si le rôle admin est sélectionné
+    if (formData.role === 'admin' && formData.adminCode !== '12345abdou@A1') {
+      setValidationError('Code admin incorrect. Le code correct est: 12345abdou@A1');
+      return false;
+    }
+    
     return true;
   };
 
@@ -57,7 +71,7 @@ const Register = () => {
 
     setLoading(true);
     
-    const { confirmPassword, ...userData } = formData;
+    const { confirmPassword, adminCode, ...userData } = formData;
     const result = await register(userData);
     
     if (result.success) {
@@ -75,7 +89,7 @@ const Register = () => {
             Inscription
           </Typography>
           <Typography variant="body2" className="text-gray-600 mt-2">
-            Créez votre compte administrateur
+            Créez votre compte utilisateur
           </Typography>
         </Box>
 
@@ -131,8 +145,65 @@ const Register = () => {
             onChange={handleChange}
             required
             variant="outlined"
-            className="mb-6"
+            className="mb-4"
           />
+
+          {/* Sélection du rôle */}
+          <FormControl fullWidth variant="outlined" className="mb-4">
+            <InputLabel>Rôle</InputLabel>
+            <Select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              label="Rôle"
+            >
+              <MenuItem value="user">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Person fontSize="small" />
+                  Utilisateur
+                </Box>
+              </MenuItem>
+              <MenuItem value="admin">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AdminPanelSettings fontSize="small" />
+                  Administrateur
+                </Box>
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Code admin (visible seulement si admin est sélectionné) */}
+          {formData.role === 'admin' && (
+            <Box className="mb-4">
+              <TextField
+                fullWidth
+                label="Code Admin"
+                name="adminCode"
+                type="password"
+                value={formData.adminCode}
+                onChange={handleChange}
+                required
+                variant="outlined"
+                helperText="Code requis pour devenir administrateur"
+                className="mb-2"
+              />
+              <Alert severity="info" className="mb-2">
+                <Typography variant="body2">
+                  <strong>Code admin:</strong> 12345abdou@A1
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+
+          {/* Affichage du rôle sélectionné */}
+          <Box className="mb-4">
+            <Chip
+              label={formData.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+              color={formData.role === 'admin' ? 'primary' : 'default'}
+              icon={formData.role === 'admin' ? <AdminPanelSettings /> : <Person />}
+              variant="outlined"
+            />
+          </Box>
 
           <Button
             type="submit"

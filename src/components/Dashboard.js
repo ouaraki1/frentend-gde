@@ -40,19 +40,21 @@ import {
   Download,
   Edit,
   Share,
-  Person,
   AdminPanelSettings,
   Settings,
-  FileCopy,
+  Notifications,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { folderAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import FileMetadataDialog from './FileMetadataDialog';
 import ShareDialog from './ShareDialog';
-import SharedFoldersDialog from './SharedFoldersDialog';
 import FileShareDialog from './FileShareDialog';
-import SharedFilesDialog from './SharedFilesDialog';
+import PendingFileSharesDialog from './PendingFileSharesDialog';
+import MySharedFilesDialog from './MySharedFilesDialog';
+import FolderShareDialog from './FolderShareDialog';
+import PendingFolderSharesDialog from './PendingFolderSharesDialog';
+import SharedFoldersDialog from './SharedFoldersDialog';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -77,18 +79,54 @@ const Dashboard = () => {
   // Nouvelles fonctionnalités
   const [showFileMetadata, setShowFileMetadata] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showSharedFolders, setShowSharedFolders] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameFolderName, setRenameFolderName] = useState('');
   const [allFiles, setAllFiles] = useState([]);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [showFileShareDialog, setShowFileShareDialog] = useState(false);
-  const [showSharedFilesDialog, setShowSharedFilesDialog] = useState(false);
+  const [showPendingFileSharesDialog, setShowPendingFileSharesDialog] = useState(false);
   const [selectedFileForSharing, setSelectedFileForSharing] = useState(null);
+  const [pendingFileCount, setPendingFileCount] = useState(0);
+  const [showMySharedFilesDialog, setShowMySharedFilesDialog] = useState(false);
+  const [showFolderShareDialog, setShowFolderShareDialog] = useState(false);
+  const [selectedFolderForSharing, setSelectedFolderForSharing] = useState(null);
+  const [showPendingFolderSharesDialog, setShowPendingFolderSharesDialog] = useState(false);
+  const [showSharedFoldersDialog, setShowSharedFoldersDialog] = useState(false);
+  const [pendingFolderCount, setPendingFolderCount] = useState(0);
 
   useEffect(() => {
     loadMainFolders();
+    loadPendingFileCount();
+    loadPendingFolderCount();
   }, []);
+
+  // Recharger les compteurs périodiquement pour maintenir la synchronisation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadPendingFileCount();
+      loadPendingFolderCount();
+    }, 30000); // Recharger toutes les 30 secondes
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadPendingFileCount = async () => {
+    try {
+      const response = await folderAPI.getPendingFileShares();
+      setPendingFileCount(response.data.length);
+    } catch (error) {
+      console.error('Error loading pending file count:', error);
+    }
+  };
+
+  const loadPendingFolderCount = async () => {
+    try {
+      const response = await folderAPI.getPendingFolders();
+      setPendingFolderCount(response.data.length);
+    } catch (error) {
+      console.error('Error loading pending folder count:', error);
+    }
+  };
 
   const loadMainFolders = async () => {
     try {
@@ -327,8 +365,8 @@ const Dashboard = () => {
   };
 
   const handleShareFolder = (folder) => {
-    setCurrentFolder(folder);
-    setShowShareDialog(true);
+    setSelectedFolderForSharing(folder);
+    setShowFolderShareDialog(true);
   };
 
   const handleRenameFolder = (folder) => {
@@ -372,20 +410,24 @@ const Dashboard = () => {
     }
   };
 
-  const handleSharedFolderClick = async (folder) => {
-    try {
-      const response = await folderAPI.getFolderContents(folder._id);
-      setCurrentFolder(response.data);
-      setCurrentPath([folder]);
-    } catch (error) {
-      console.error('Error loading shared folder:', error);
-      toast.error('Erreur lors du chargement du dossier partagé');
-    }
-  };
+
 
   const handleShareFile = (file) => {
     setSelectedFileForSharing(file);
     setShowFileShareDialog(true);
+  };
+
+  const handleSharedFolderClick = async (folder) => {
+    try {
+      console.log('🔍 Loading shared folder:', folder);
+      const response = await folderAPI.getFolderContents(folder._id);
+      setCurrentFolder(response.data);
+      setCurrentPath([folder]);
+      toast.success(`Dossier partagé "${folder.name}" ouvert`);
+    } catch (error) {
+      console.error('Error loading shared folder:', error);
+      toast.error('Erreur lors du chargement du dossier partagé');
+    }
   };
 
   const getFileIcon = (mimeType) => {
@@ -440,23 +482,68 @@ const Dashboard = () => {
                </Typography>
                
                {/* Boutons pour les fonctionnalités avancées */}
-               <Button
-                 variant="outlined"
-                 startIcon={<Person />}
-                 onClick={() => setShowSharedFolders(true)}
-                 size="small"
-               >
-                 Dossiers partagés
-               </Button>
-               
-               <Button
-                 variant="outlined"
-                 startIcon={<FileCopy />}
-                 onClick={() => setShowSharedFilesDialog(true)}
-                 size="small"
-               >
-                 Fichiers partagés
-               </Button>
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<Share />}
+                  onClick={() => setShowMySharedFilesDialog(true)}
+                  size="small"
+                >
+                  Mes fichiers partagés
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<Folder />}
+                  onClick={() => setShowSharedFoldersDialog(true)}
+                  size="small"
+                >
+                  Dossiers partagés
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<Notifications />}
+                  onClick={() => {
+           setShowPendingFileSharesDialog(true);
+           // Recharger le compteur quand on ouvre le dialog
+           loadPendingFileCount();
+         }}
+                  size="small"
+                >
+                  Demandes fichiers
+                  {pendingFileCount > 0 && (
+                    <Chip
+                      label={pendingFileCount}
+                      size="small"
+                      color="error"
+                      sx={{ ml: 1, minWidth: '20px', height: '20px' }}
+                    />
+                  )}
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<Notifications />}
+                  onClick={() => {
+           setShowPendingFolderSharesDialog(true);
+           // Recharger le compteur quand on ouvre le dialog
+           loadPendingFolderCount();
+         }}
+                  size="small"
+                >
+                  Demandes dossiers
+                  {pendingFolderCount > 0 && (
+                    <Chip
+                      label={pendingFolderCount}
+                      size="small"
+                      color="error"
+                      sx={{ ml: 1, minWidth: '20px', height: '20px' }}
+                    />
+                  )}
+                </Button>
                
                {user?.role === 'admin' && (
                  <Button
@@ -600,9 +687,30 @@ const Dashboard = () => {
                     <Typography variant="h6" className="font-medium">
                       {subfolder.name}
                     </Typography>
+                    
+                    {/* Indication si c'est un dossier copié partagé */}
+                    {subfolder.isSharedCopy && (
+                      <Box className="mt-1 mb-1">
+                        <Chip
+                          label="Dossier partagé"
+                          size="small"
+                          color="info"
+                          variant="outlined"
+                          icon={<Share />}
+                        />
+                      </Box>
+                    )}
+                    
                     <Typography variant="body2" className="text-gray-600">
                       Dossier
                     </Typography>
+                    
+                    {/* Afficher le propriétaire original pour les dossiers copiés */}
+                    {subfolder.isSharedCopy && subfolder.originalOwner && (
+                      <Typography variant="caption" className="text-blue-600 block mt-1">
+                        Propriétaire: {subfolder.originalOwner.username || subfolder.originalOwner}
+                      </Typography>
+                    )}
                   </CardContent>
                                      <CardActions className="justify-center">
                      <Button
@@ -658,12 +766,33 @@ const Dashboard = () => {
                      <Typography variant="h6" className="font-medium truncate">
                        {file.name}
                      </Typography>
+                     
+                     {/* Indication si c'est un fichier copié partagé */}
+                     {file.isSharedCopy && (
+                       <Box className="mt-1 mb-1">
+                         <Chip
+                           label="Fichier partagé"
+                           size="small"
+                           color="info"
+                           variant="outlined"
+                           icon={<Share />}
+                         />
+                       </Box>
+                     )}
+                     
                      <Typography variant="body2" className="text-gray-600">
                        {formatFileSize(file.data?.length || 0)}
                      </Typography>
                      <Typography variant="caption" className="text-gray-500">
                        {formatDate(file.createdAt)}
                      </Typography>
+                     
+                     {/* Afficher le propriétaire original pour les fichiers copiés */}
+                     {file.isSharedCopy && file.originalOwner && (
+                       <Typography variant="caption" className="text-blue-600 block mt-1">
+                         Propriétaire: {file.originalOwner.username || file.originalOwner}
+                       </Typography>
+                     )}
                      
                      {/* Affichage des tags */}
                      {file.tags && file.tags.length > 0 && (
@@ -783,9 +912,30 @@ const Dashboard = () => {
                     <Typography variant="h6" className="font-medium">
                       {folder.name}
                     </Typography>
+                    
+                    {/* Indication si c'est un dossier copié partagé */}
+                    {folder.isSharedCopy && (
+                      <Box className="mt-1 mb-1">
+                        <Chip
+                          label="Dossier partagé"
+                          size="small"
+                          color="info"
+                          variant="outlined"
+                          icon={<Share />}
+                        />
+                      </Box>
+                    )}
+                    
                     <Typography variant="body2" className="text-gray-600">
                       Dossier principal
                     </Typography>
+                    
+                    {/* Afficher le propriétaire original pour les dossiers copiés */}
+                    {folder.isSharedCopy && folder.originalOwner && (
+                      <Typography variant="caption" className="text-blue-600 block mt-1">
+                        Propriétaire: {folder.originalOwner.username || folder.originalOwner}
+                      </Typography>
+                    )}
                   </CardContent>
                   <CardActions className="justify-center">
                     <Button
@@ -1035,13 +1185,6 @@ const Dashboard = () => {
          }}
        />
 
-       {/* Shared Folders Dialog */}
-       <SharedFoldersDialog
-         open={showSharedFolders}
-         onClose={() => setShowSharedFolders(false)}
-         onFolderClick={handleSharedFolderClick}
-       />
-
        {/* Rename Folder Dialog */}
        <Dialog open={showRenameDialog} onClose={() => setShowRenameDialog(false)}>
          <DialogTitle>Renommer le dossier</DialogTitle>
@@ -1139,14 +1282,77 @@ const Dashboard = () => {
          }}
        />
 
-       {/* Shared Files Dialog */}
-       <SharedFilesDialog
-         open={showSharedFilesDialog}
-         onClose={() => setShowSharedFilesDialog(false)}
-         onFileClick={handleSharedFolderClick} // Assuming handleSharedFolderClick can handle files too
+
+
+       {/* Pending File Shares Dialog */}
+       <PendingFileSharesDialog
+         open={showPendingFileSharesDialog}
+         onClose={() => {
+           setShowPendingFileSharesDialog(false);
+           // Recharger le compteur quand on ferme le dialog
+           loadPendingFileCount();
+         }}
+         onUpdate={() => {
+           // Mettre à jour le compteur immédiatement (optimiste)
+           setPendingFileCount(prev => Math.max(0, prev - 1));
+           // Recharger les dossiers principaux pour voir les fichiers copiés
+           loadMainFolders();
+           // Recharger les données si nécessaire
+           if (currentFolder?._id) {
+             loadFolderContents(currentFolder._id);
+           }
+           // Recharger le compteur depuis le serveur pour s'assurer de la cohérence
+           loadPendingFileCount();
+         }}
        />
-     </Box>
-   );
- };
+
+       {/* My Shared Files Dialog */}
+       <MySharedFilesDialog
+         open={showMySharedFilesDialog}
+         onClose={() => setShowMySharedFilesDialog(false)}
+       />
+
+       {/* Folder Share Dialog */}
+       <FolderShareDialog
+         open={showFolderShareDialog}
+         onClose={() => setShowFolderShareDialog(false)}
+         folder={selectedFolderForSharing}
+         onUpdate={() => {
+           if (currentFolder?._id) {
+             loadFolderContents(currentFolder._id);
+           }
+         }}
+       />
+
+       {/* Pending Folder Shares Dialog */}
+       <PendingFolderSharesDialog
+         open={showPendingFolderSharesDialog}
+         onClose={() => {
+           setShowPendingFolderSharesDialog(false);
+           // Recharger le compteur quand on ferme le dialog
+           loadPendingFolderCount();
+         }}
+         onUpdate={() => {
+           // Mettre à jour le compteur immédiatement (optimiste)
+           setPendingFolderCount(prev => Math.max(0, prev - 1));
+           // Recharger les données
+           loadMainFolders();
+           if (currentFolder?._id) {
+             loadFolderContents(currentFolder._id);
+           }
+           // Recharger le compteur depuis le serveur pour s'assurer de la cohérence
+           loadPendingFolderCount();
+         }}
+       />
+
+       {/* Shared Folders Dialog */}
+       <SharedFoldersDialog
+         open={showSharedFoldersDialog}
+         onClose={() => setShowSharedFoldersDialog(false)}
+         onFolderClick={handleSharedFolderClick}
+       />
+      </Box>
+    );
+  };
 
 export default Dashboard; 

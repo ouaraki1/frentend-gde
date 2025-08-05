@@ -83,6 +83,7 @@ export const folderAPI = {
   respondToShare: (folderId, response) => 
     api.post(`/folders/${folderId}/respond`, { response }),
   getSharedFolders: () => api.get('/folders/shared/accepted'),
+  getPendingFolders: () => api.get('/folders/shared/pending-folders'),
 
   // File sharing methods
   shareFile: (folderId, fileId, recipientId, password) =>
@@ -97,6 +98,8 @@ export const folderAPI = {
     }),
 
   getSharedFiles: () => api.get("/folders/shared/files"),
+  getPendingFileShares: () => api.get("/folders/shared/pending-files"),
+  getMySharedFiles: () => api.get("/folders/my-shared-files"),
 };
 
 export default api; 

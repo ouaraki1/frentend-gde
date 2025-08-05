@@ -17,11 +17,12 @@ import {
   Download as DownloadIcon,
   Visibility as ViewIcon,
   Person as PersonIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { folderAPI } from '../services/api';
 
-const SharedFilesDialog = ({ open, onClose }) => {
+const SharedFilesDialog = ({ open, onClose, onFileEdit }) => {
   const [sharedFiles, setSharedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -135,16 +136,16 @@ const SharedFilesDialog = ({ open, onClose }) => {
                       <Typography variant="h6" component="div">
                         {file.fileName}
                       </Typography>
-                      
+
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <PersonIcon fontSize="small" color="action" />
                         <Typography variant="body2" color="text.secondary">
-                          Partagé par: {file.owner.username} ({file.owner.email})
+                          <strong>Propriétaire:</strong> {file.owner.username} ({file.owner.email})
                         </Typography>
                       </Box>
 
                       <Typography variant="body2" color="text.secondary">
-                        Dossier: {file.folderName} | Taille: {formatFileSize(file.size)} | 
+                        Dossier: {file.folderName} | Taille: {formatFileSize(file.size)} |
                         Type: {file.mimetype} | Ajouté le: {formatDate(file.uploadedAt)}
                       </Typography>
 
@@ -169,12 +170,10 @@ const SharedFilesDialog = ({ open, onClose }) => {
                           <Chip
                             label={file.status}
                             size="small"
-                            color={
-                              file.status === 'archive' ? 'default' :
+                            color={file.status === 'archive' ? 'default' :
                               file.status === 'courent' ? 'primary' :
-                              file.status === 'stable' ? 'success' :
-                              'secondary'
-                            }
+                                file.status === 'stable' ? 'success' :
+                                  'secondary'}
                             variant="filled"
                           />
                         </Box>
@@ -183,7 +182,7 @@ const SharedFilesDialog = ({ open, onClose }) => {
 
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Tooltip title="Voir le fichier">
-                        <IconButton 
+                        <IconButton
                           onClick={() => handleViewFile(file)}
                           size="small"
                         >
@@ -191,13 +190,24 @@ const SharedFilesDialog = ({ open, onClose }) => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Télécharger">
-                        <IconButton 
+                        <IconButton
                           onClick={() => handleDownloadFile(file)}
                           size="small"
                         >
                           <DownloadIcon />
                         </IconButton>
                       </Tooltip>
+                      {onFileEdit && (
+                        <Tooltip title="Modifier les métadonnées">
+                          <IconButton
+                            onClick={() => onFileEdit(file)}
+                            size="small"
+                            color="primary"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
                   </Box>
                 </CardContent>
