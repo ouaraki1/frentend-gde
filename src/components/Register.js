@@ -24,7 +24,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'user',
+    role: 'admin', // Forcé à admin
     adminCode: '',
   });
   const [loading, setLoading] = useState(false);
@@ -52,13 +52,11 @@ const Register = () => {
       setValidationError('Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
-    
-    // Vérifier le code admin si le rôle admin est sélectionné
-    if (formData.role === 'admin' && formData.adminCode !== '12345abdou@A1') {
-      setValidationError('Code admin incorrect. Le code correct est: 12345abdou@A1');
+    // Toujours vérifier le code admin
+    if (formData.adminCode !== '1234societerx') {
+      setValidationError('Code admin incorrect. Le code correct est: 1234societerx');
       return false;
     }
-    
     return true;
   };
 
@@ -148,59 +146,32 @@ const Register = () => {
             className="mb-4"
           />
 
-          {/* Sélection du rôle */}
-          <FormControl fullWidth variant="outlined" className="mb-4">
-            <InputLabel>Rôle</InputLabel>
-            <Select
-              name="role"
-              value={formData.role}
+          {/* Champ code admin obligatoire */}
+          <Box className="mb-4">
+            <TextField
+              fullWidth
+              label="Code Admin"
+              name="adminCode"
+              type="password"
+              value={formData.adminCode}
               onChange={handleChange}
-              label="Rôle"
-            >
-              <MenuItem value="user">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Person fontSize="small" />
-                  Utilisateur
-                </Box>
-              </MenuItem>
-              <MenuItem value="admin">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AdminPanelSettings fontSize="small" />
-                  Administrateur
-                </Box>
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Code admin (visible seulement si admin est sélectionné) */}
-          {formData.role === 'admin' && (
-            <Box className="mb-4">
-              <TextField
-                fullWidth
-                label="Code Admin"
-                name="adminCode"
-                type="password"
-                value={formData.adminCode}
-                onChange={handleChange}
-                required
-                variant="outlined"
-                helperText="Code requis pour devenir administrateur"
-                className="mb-2"
-              />
-              <Alert severity="info" className="mb-2">
-                <Typography variant="body2">
-                  <strong>Code admin:</strong> 12345abdou@A1
-                </Typography>
-              </Alert>
-            </Box>
-          )}
-
-          {/* Affichage du rôle sélectionné */}
+              required
+              variant="outlined"
+              helperText="Code requis pour devenir administrateur"
+              className="mb-2"
+            />
+            {/* <Alert severity="info" className="mb-2">
+              <Typography variant="body2">
+                <strong>Code admin:</strong> 1234societerx
+              </Typography>
+            </Alert> */}
+          </Box>
+          {/* Affichage du rôle admin */}
           <Box className="mb-4">
             <Chip
-              label={formData.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
-              color={formData.role === 'admin' ? 'primary' : 'default'}
-              icon={formData.role === 'admin' ? <AdminPanelSettings /> : <Person />}
+              label={'Administrateur'}
+              color={'primary'}
+              icon={<AdminPanelSettings />}
               variant="outlined"
             />
           </Box>
