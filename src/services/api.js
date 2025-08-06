@@ -102,4 +102,12 @@ export const folderAPI = {
   getMySharedFiles: () => api.get("/folders/my-shared-files"),
 };
 
+// User management API (admin only)
+export const userAPI = {
+  createUser: (userData) => api.post('/auth/users', userData),
+  updateUser: (id, userData) => api.put(`/auth/users/${id}`, userData),
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
+  getUsers: () => api.get('/auth/users'),
+};
+
 export default api; 

@@ -55,6 +55,7 @@ import MySharedFilesDialog from './MySharedFilesDialog';
 import FolderShareDialog from './FolderShareDialog';
 import PendingFolderSharesDialog from './PendingFolderSharesDialog';
 import SharedFoldersDialog from './SharedFoldersDialog';
+import { userAPI } from '../services/api';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -93,11 +94,19 @@ const Dashboard = () => {
   const [showPendingFolderSharesDialog, setShowPendingFolderSharesDialog] = useState(false);
   const [showSharedFoldersDialog, setShowSharedFoldersDialog] = useState(false);
   const [pendingFolderCount, setPendingFolderCount] = useState(0);
+  const [users, setUsers] = useState([]);
+  const [showUserManagement, setShowUserManagement] = useState(false);
+  const [userForm, setUserForm] = useState({ username: '', email: '', password: '', role: 'user' });
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [userError, setUserError] = useState('');
 
   useEffect(() => {
     loadMainFolders();
     loadPendingFileCount();
     loadPendingFolderCount();
+    if (user?.role === 'admin' && showUserManagement) {
+      fetchUsers();
+    }
   }, []);
 
   // Recharger les compteurs périodiquement pour maintenir la synchronisation
@@ -457,6 +466,58 @@ const Dashboard = () => {
       minute: '2-digit',
     });
   };
+
+  const fetchUsers = async () => {
+    try {
+      // À adapter selon l'API backend pour lister les utilisateurs
+      const res = await userAPI.getUsers?.();
+      setUsers(res?.data || []);
+    } catch (err) {
+      setUserError('Erreur lors du chargement des utilisateurs');
+    }
+  };
+
+  const handleUserFormChange = (e) => {
+    setUserForm({ ...userForm, [e.target.name]: e.target.value });
+  };
+
+  const handleCreateOrUpdateUser = async (e) => {
+    e.preventDefault();
+    setUserError('');
+    try {
+      if (editingUserId) {
+        await userAPI.updateUser(editingUserId, userForm);
+      } else {
+        await userAPI.createUser(userForm);
+      }
+      setUserForm({ username: '', email: '', password: '', role: 'user' });
+      setEditingUserId(null);
+      fetchUsers();
+    } catch (err) {
+      setUserError(err.response?.data?.message || 'Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setUserForm({ username: user.username, email: user.email, password: '', role: user.role });
+    setEditingUserId(user._id);
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Supprimer cet utilisateur ?')) return;
+    try {
+      await userAPI.deleteUser(id);
+      fetchUsers();
+    } catch (err) {
+      setUserError('Erreur lors de la suppression');
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === 'admin' && showUserManagement) {
+      fetchUsers();
+    }
+  }, [user, showUserManagement]);
 
   return (
     <Box className="min-h-screen bg-gray-50">
@@ -1351,6 +1412,44 @@ const Dashboard = () => {
          onClose={() => setShowSharedFoldersDialog(false)}
          onFolderClick={handleSharedFolderClick}
        />
+
+       {/* Section gestion utilisateurs (admin) */}
+       {user?.role === 'admin' && (
+         <Box className="my-8 p-4 bg-white rounded shadow">
+           <Button variant="contained" color="primary" onClick={() => setShowUserManagement(!showUserManagement)}>
+             {showUserManagement ? 'Fermer la gestion des utilisateurs' : 'Gérer les utilisateurs'}
+           </Button>
+           {showUserManagement && (
+             <Box mt={2}>
+               <Typography variant="h6">Utilisateurs</Typography>
+               {userError && <Alert severity="error">{userError}</Alert>}
+               <form onSubmit={handleCreateOrUpdateUser} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                 <TextField name="username" label="Nom" value={userForm.username} onChange={handleUserFormChange} required />
+                 <TextField name="email" label="Email" value={userForm.email} onChange={handleUserFormChange} required />
+                 <TextField name="password" label="Mot de passe" value={userForm.password} onChange={handleUserFormChange} type="password" required={!editingUserId} />
+                 <TextField name="role" label="Rôle" value={userForm.role} onChange={handleUserFormChange} select>
+                   <MenuItem value="user">Utilisateur</MenuItem>
+                   <MenuItem value="admin">Admin</MenuItem>
+                 </TextField>
+                 <Button type="submit" variant="contained" color="success">{editingUserId ? 'Modifier' : 'Créer'}</Button>
+                 {editingUserId && <Button onClick={() => { setEditingUserId(null); setUserForm({ username: '', email: '', password: '', role: 'user' }); }}>Annuler</Button>}
+               </form>
+               <List>
+                 {users.map(u => (
+                   <ListItem key={u._id} secondaryAction={
+                     <>
+                       <IconButton onClick={() => handleEditUser(u)}><Edit /></IconButton>
+                       <IconButton onClick={() => handleDeleteUser(u._id)}><Delete /></IconButton>
+                     </>
+                   }>
+                     <ListItemText primary={u.username} secondary={u.email + ' (' + u.role + ')'} />
+                   </ListItem>
+                 ))}
+               </List>
+             </Box>
+           )}
+         </Box>
+       )}
       </Box>
     );
   };
